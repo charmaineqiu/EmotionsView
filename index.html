@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+<style>
+    body {
+  background-color:rgb(253, 248, 237);
+  margin:0;
+  }
+
+@font-face {
+    font-family: America Bold;
+    src: url(/GT-America-Mono-Bold-v1.otf) format("opentype");
+    font-weight: bold;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: America Regular;
+    src: url(/GT-America-Mono-Regular-v1.otf) format("opentype");
+    font-weight: normal;
+    font-style: normal;
+}
+
+.button {
+  color: black;
+  padding: 5px 16px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  /* margin: 4px 2px; */
+  cursor: pointer;
+  border: 1px solid black;
+  border-radius: 30px;
+  background-color: white;
+  position: relative;
+
+}
+
+/* .button:active {
+  background-color: #c9c9c9;
+}
+
+.button1{
+    left: 100px;
+      top: 600px;
+}
+.button2{
+    left: 110px;
+    top: 600px;
+} */
+
+h1 {
+    position: relative;
+     font-family: America Bold;
+    left: 110px;
+    top: 20px;
+}
+
+.tooltip {
+    position: absolute;
+  }
+
+  .tooltip div {
+    font-family: America Bold;
+
+}
+
+</style>
+</head>
+
+</div>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+
+<script src="menus.js"></script>
+
+<!-- Create a div where the graph will take place -->
+<div id="my_dataviz"></div>
+<style>
+  .tooltip {
+  position: absolute;
+}
+</style>
+<!-- <script src="bubbles.js"></script> -->
+<script>
+  // if (st == "sadness") {
+//     return 0;
+// } if (st == "fear") {
+//     return 1;
+// } if (st == "joy") {
+//     return 2;
+// } if (st == "disgust") {
+//     return 3;
+// } if (st == "anger") {
+//     return 4;
+// } if (st == "surprise") {
+//     return 5;
+// }
+whichEmot = {"0":"sadness", "1": "fear", "2": "joy", "3": "disgust", "4":"anger", "5":"surprise"}
+
+function random(min, max) {
+    return min + Math.random() * (max - min);
+}
+
+function randomPadding(radius) {
+    let min = -radius*5;
+    let max = -radius;
+    return random(min, max);
+}
+
+var width = window.innerWidth,
+    height = window.innerHeight,
+    padding = random(-100, -50); // separation between same-color nodes
+    clusterPadding = random(-30,0), // separation between different-color nodes
+    maxRadius = 29;
+
+var svg = d3.select("#my_dataviz").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .call(d3.behavior.zoom().on("zoom", function () {
+          svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")")}))
+        .append("g");
+
+
+
+var color = d3.scale.ordinal()
+// clusters = [5, 2, 0, 1, 4, 3]
+  // .range(["#FBCA1F", "#FE7528", "#6094E2", "#C92E2E", "#835AC6", "#39A15D"]);
+  //.range(["rgba(251, 202, 31, .35)", "rgba(254, 117, 40, .35)", "rgba(96, 148, 226, .35)", "rgba(201, 46, 46, .35)", "rgba(131, 90, 198, .35)", "rgba(57, 161, 93, .35)"]);
+  //.range(["rgba(117, 144, 170)", "rgba(102, 56, 138)", "rgba(255, 199, 0)", "rgba(77, 96, 24)", "rgba(139, 39, 39)", "rgba(255, 86, 177)"]);
+  .range(["rgba(255, 86, 177)", "rgba(255, 192, 36)", "rgba(117, 144, 170)", "rgba(102, 56, 138)","rgba(139, 39, 39)", "rgba(77, 96, 24)"]);
+
+d3.text("emotions.csv", function(error,text) {
+
+  if (error) throw error;
+  var data = d3.csv.parse(text);
+
+  data.forEach(function(d) {
+    d.emotVal = +d.emotVal;
+    d.emotion = +d.emotion;
+  });
+
+  //text wrapping
+  function wrap(text, width) {
+      text.each(function () {
+          var text = d3.select(this),
+              words = text.text().split(/\s+/).reverse(),
+              word,
+              line = [],
+              lineNumber = 0,
+              lineHeight = 1.3, // ems
+              x = text.attr("x"),
+              y = text.attr("y"),
+              dy = 0, //parseFloat(text.attr("dy")),
+              tspan = text.text(null)
+                          .append("tspan")
+                          .attr("x", x)
+                          .attr("y", y)
+                          .attr("dy", dy + "em");
+          while (word = words.pop()) {
+              line.push(word);
+              tspan.text(line.join(" "));
+              if (tspan.node().getComputedTextLength() > width) {
+                  line.pop();
+                  tspan.text(line.join(" "));
+                  line = [word];
+                  tspan = text.append("tspan")
+                              .attr("x", x)
+                              .attr("y", y)
+                              .attr("dy", ++lineNumber * lineHeight + dy + "em")
+                              .text(word);
+              }
+          }
+      });
+  }
+var cs = [];
+data.forEach(function(d){
+  if(!cs.contains(d.emotion)) {
+      cs.push(d.emotion);//pushes emotion groups
+  }
+  console.log(cs);
+});
+
+var n = data.length, // total number of nodes
+    m = cs.length; // number of distinct clusters
+
+
+// The largest node for each cluster.
+var clusters = new Array(m);
+var nodes = [];
+for (var i=0; i<n; i++) {
+  nodes.push(create_nodes(data,i));
+}
+
+var force = d3.layout.force()
+    //.force("charge", d3.forceManyBody().strength(-15))
+    .nodes(nodes)
+    .size([width, height])
+    .gravity(0.01)
+    .charge(0.01)
+    .on("tick", tick)
+    .start();
+//
+// var svg = d3.select("body").append("svg")
+//     .attr("width", width)
+//     .attr("height", height);
+
+    // create a tooltip
+var tooltip = d3.select("#my_dataviz")
+    .append("div")
+    .style("opacity", 0)
+    .attr("class", "tooltip")
+    .style("background-color", "white")
+    // .style("box-shadow", "2px 2px 4px #bababa")
+    .style("background-color", "#F5EDDC")
+    .style("border-radius", "10px")
+    .style("padding", "20px")
+    .style("color", "black")
+    .style("margin-top", "-64px")
+    // .style("line-height","1.1")
+    // .style("font-size", "1.9em")
+    .style("margin-left", "18px")
+
+      // Three function that change the tooltip when user hover / move / leave a cell
+var mouseover = function(d) {
+    tooltip
+        .style("opacity", 1)
+        .style("font-family","America Bold, monospace")
+        .style("font-size", ".95em")
+        .style("line-height","120%")
+        .html(d.headline + "<br>")
+        .append("div")
+        .html(d.subject + "<br>" + "<br>" + d.abstract + "<br>" + "<br>" + whichEmot[d.emotion].toString() + ": " + Math.round(d.emotVal * 100) / 100)
+        .style("font-family","America Regular, monospace")
+        .style("font-size", ".9em")
+        .style("line-height","130%")
+        .style("letter-spacing", "-.5px")
+    d3.select(this)
+        .style("opacity", 1)
+    d3.selectAll(".bubbles")
+      .transition()
+      .style('opacity',0.05)
+    d3.selectAll('circle[data-headline="' + d.headline + '"]').transition().style('opacity', '1');
+}
+
+
+
+
+var mousemove = function(d) {
+  console.log(d.emotion);
+    tooltip
+
+        .style("left", "200px")
+        .style("top", "100px")
+        .style("width", "400px")
+        .style("left", (d3.mouse(this)[0]+30) + "px")
+        .style("top", (d3.mouse(this)[1]+30) + "px")
+        // .style("left", d3.event.pageX + "px")
+        // .style("top", (d3.event.pageY - 28) + "px")
+      }
+var mouseleave = function(d) {
+    tooltip
+        .style("opacity", 0)
+    d3.select(this)
+        .style("stroke", "none")
+        .style("opacity", 0.25)
+    d3.selectAll('.bubbles').transition().style('opacity', '0.25');
+     }
+
+var node = svg.selectAll("circle")
+    .data(nodes)
+  .enter().append("circle")
+    .style("opacity", .25)
+    .style("fill", function(d) { return color(d.cluster); })
+    .call(force.drag)
+    .attr("class", function(d) { return "bubbles " + whichEmot[d.emotion] })
+    .attr("data-headline", function(d) { return d.headline })
+
+    .on("mouseover", mouseover)
+    .on("mousemove", mousemove)
+    .on("mouseleave", mouseleave);
+
+node.transition()
+    .duration(750)
+    .delay(function(d, i) { return i *10; })
+    .attrTween("r", function(d) {
+      var i = d3.interpolate(0, d.radius);
+      return function(t) { return d.radius = i(t); };
+    });
+
+function tick(e) {
+  node
+      //.each(cluster(10 * e.alpha * e.alpha))
+      .each(cluster(10 * e.alpha * e.alpha))
+      .each(collide(.15))
+      .attr("cx", function(d) { return d.x; })
+      .attr("cy", function(d) { return d.y; });
+}
+
+
+// Move d to be adjacent to the cluster node.
+function cluster(alpha) {
+  return function(d) {
+    var cluster = clusters[d.cluster];
+    if (cluster === d) return;
+    var x = d.x - cluster.x,
+        y = d.y - cluster.y,
+        l = Math.sqrt(x * x + y * y),
+        r = d.radius + cluster.radius;
+    if (l != r) {
+      l = (l - r) / l * alpha;
+      d.x -= x *= l;
+      d.y -= y *= l;
+      cluster.x += x;
+      cluster.y += y;
+    }
+  };
+}
+
+function create_nodes(data,node_counter) {
+  var i = cs.indexOf(data[node_counter].emotion),
+      r = Math.sqrt((i + 1) / m * -Math.log(Math.random())) * maxRadius,
+      d = {
+        cluster: i,
+        radius: data[node_counter].emotVal*width/7,
+        headline: data[node_counter].headline,
+        subject: data[node_counter].subject,
+        abstract: data[node_counter].abstract,
+        emotion: data[node_counter].emotion,
+        emotVal: data[node_counter].emotVal,
+        x: Math.cos(i / m * 2 * Math.PI) * 200 + width / 2 + Math.random(),
+        y: Math.sin(i / m * 2 * Math.PI) * 200 + height / 2 + Math.random()
+      };
+  if (!clusters[i] || (r > clusters[i].radius)) clusters[i] = d;
+  return d;
+};
+
+// Resolves collisions between d and all other circles.
+function collide(alpha) {
+  var quadtree = d3.geom.quadtree(nodes);
+  return function(d) {
+    var r = d.radius + maxRadius + Math.max(randomPadding(d.radius), clusterPadding),
+        nx1 = d.x - r,
+        nx2 = d.x + r,
+        ny1 = d.y - r,
+        ny2 = d.y + r;
+    quadtree.visit(function(quad, x1, y1, x2, y2) {
+      if (quad.point && (quad.point !== d)) {
+        var x = d.x - quad.point.x,
+            y = d.y - quad.point.y,
+            l = Math.sqrt(x * x + y * y),
+            r = d.radius + quad.point.radius + (d.cluster === quad.point.cluster ? randomPadding(d.radius) : clusterPadding);
+        if (l < r) {
+          l = (l - r) / l * alpha;
+          d.x -= x *= l;
+          d.y -= y *= l;
+          quad.point.x += x;
+          quad.point.y += y;
+        }
+      }
+      return x1 > nx2 || x2 < nx1 || y1 > ny2 || y2 < ny1;
+    });
+  };
+}
+    // Add a scale for bubble size
+    var z = d3.scale.sqrt()
+      // .domain([200, 1310000])
+      .domain([0, .45])
+      .range([2, 30]);
+    var myColor = d3.scale.ordinal()
+    .domain(["joy", "surprise", "anger", "sadness", "fear", "disgust"])
+    .range(["FBCA1F", "#FF56B1", "C92E2E", "6094E2", "835AC6", "39A15D"])
+
+
+  // ---------------------------//
+  //       LEGEND              //
+  // ---------------------------//
+
+  // Add legend: circles
+  var valuesToShow = [10000000, 100000000, 1000000000]
+  var xCircle = 390
+  var xLabel = 440
+  var bvaluesToShow = [0.2, 0.4, 0.7]
+  var size = d3.scale.sqrt()
+      .domain([0.0501, 0.7])  // What's in the data, let's say it is percentage
+      .range([width/7*0.0501, width/7*0.7])  // Size in pixel
+
+var bxCircle = width - width*.9
+var bxLabel = 450
+var byCircle = height - 5
+// Add legend on the left: segments
+svg
+  .selectAll("legend")
+  .data(bvaluesToShow)
+  .enter()
+  .append("circle")
+    .attr("cx", width - 70 - bxCircle)
+    .attr("cy", function(d){ return byCircle - 50 - size(d) } )
+    .attr("r", function(d){ return size(d) })
+    .style("fill", "none")
+    .attr("stroke", "black")
+    .attr("opacity", "0.5")
+
+// Add legend: segments
+// svg
+//   .selectAll("legend")
+//   .data(bvaluesToShow)
+//   .enter()
+//   .append("line")
+//     .attr('x1', function(d){ return width*.64 + size(d)} )
+//     .attr('x2', width - 70 - bxLabel )
+//     .attr('y1', function(d){ return byCircle - size(d)- 60 } )
+//     .attr('y2', function(d){ return byCircle - size(d) - 60} )
+//     .attr('stroke', 'black')
+//     .style('stroke-dasharray', ('2,2'))
+//     .attr("opacity", "0.3")
+
+// Add legend: labels
+svg
+  .selectAll("legend")
+  .data(bvaluesToShow)
+  .enter()
+  .append("text")
+    .attr('x', function(d){ return width - size(d)- 60 - bxCircle} )
+    .attr("font-family", "America Regular")
+    .attr("font-size", ".95em")
+    .attr('y', function(d){ return byCircle - 50 - size(d) } )
+    .text( function(d){ return d } )
+    // .style("font-size", 12)
+    .attr('alignment-baseline', 'middle-15')
+    .attr("opacity", "0.3")
+  // Population Circles Legend
+  // svg
+  //   .selectAll("legend")
+  //   .data(valuesToShow)
+  //   .enter()
+  //   .append("circle")
+  //     .attr("cx", xCircle)
+  //     .attr("cy", function(d){ return height - 100 - z(d) } )
+  //     .attr("r", function(d){ return z(d) })
+  //     .style("fill", "none")
+  //     .attr("stroke", "black")
+
+  // Add legend on the right: segments
+  svg
+    .selectAll("legend")
+    .data(valuesToShow)
+    .enter()
+    .append("line")
+    .attr('x1', function (d) { return xCircle + z(d) })
+    .attr('x2', xLabel)
+    .attr('y1', function (d) { return height - 100 - z(d) })
+    .attr('y2', function (d) { return height - 100 - z(d) })
+    .attr('stroke', 'black')
+    .style('stroke-dasharray', ('2,2'))
+
+  // Add legend: labels
+  svg
+    .selectAll("legend")
+    .data(valuesToShow)
+    .enter()
+    .append("text")
+    .attr('x', xLabel)
+    // .attr("font-family","Recoleta, monospace")
+    .attr("font-family", "America Regular, monospace")
+    .attr('y', function (d) { return height - 100 - z(d) })
+    .text(function (d) { return d / 1000000 })
+    .style("font-size", 15)
+    .attr('alignment-baseline', 'middle')
+
+  // Legend title
+  // svg.append("text")
+  //   .attr('x', xCircle)
+  //   .attr("y", height - 100 +30)
+  //   .text("Population (M)")
+  //   .attr("text-anchor", "middle")
+
+
+
+  // Add one dot in the legend for each name.
+  var size = 20
+  var allgroups = ["joy", "anger", "sadness", "fear", "disgust", "surprise"]
+  svg.selectAll("myrect")
+    .data(allgroups)
+    .enter()
+    .append("circle")
+    .attr("font-family", "America Regular, monospace")
+    .attr("cx", 43)
+    .attr("cy", function (d, i) { return 350 + i * (size + 5) }) // 100 is where the first dot appears. 25 is the distance between dots
+    .attr("r", 8)
+    // .attr("font-size", "2em")
+    .style("fill", function (d) { return myColor(d) })
+
+  // Add labels beside legend dots
+  svg.selectAll("mylabels")
+    .data(allgroups)
+    .enter()
+    .append("text")
+    .attr("font-family", "America Regular, monospace")
+    .attr("font-size",".95em")
+    .attr("letter-spacing", "-1px")
+    .attr("x", 65)
+    .attr("y", function (d, i) { return i * (size + 5) + 332 + (size) }) // 100 is where the first dot appears. 25 is the distance between dots
+    .style("fill", "black")
+    .text(function (d) { return d })
+    .attr("text-anchor", "left")
+    .style("alignment-baseline", "middle")
+    .style("text-transform", "capitalize")
+
+
+        // Add Heading
+        svg.append("text")
+    .attr("font-family", "America Regular")
+    // .attr("font-family","Recoleta, monospace")
+    .attr("text-anchor", "end")
+    .attr("x", 35)
+    .attr("y", 70)
+    .text("Emotions in Modern Love")
+    .attr("letter-spacing", "-1.5px")
+    .attr("font-size", "2em")
+    .attr("text-anchor", "start")
+
+// Add description
+    svg.append("text")
+    .attr("x", 35)
+    .attr("y", 110)
+    .text("What emotions do we associate with love? This visualization explores the different emotions in the “Modern Love” column of New York Times, where readers submit weekly stories around relationships and love.")
+    .attr("font-family","America Regular, monospace")
+    .attr("font-size", ".95em")
+    .call(wrap, 500);
+
+    svg.append("text")
+    .attr("x", 35)
+    .attr("y", 200)
+    .text("Through the NYTimes API and the Twinword Emotion Analysis API, over 800 articles from 2004-2020 were extracted and analyzed by its most prominent emotion, subjects, and publication date. The two views are designed to allow exploration in different scales and relationships between components of each article.")
+    .attr("font-family","America Regular, monospace")
+    .attr("font-size", ".95em")
+    .call(wrap, 500);
+
+
+});
+
+Array.prototype.contains = function(v) {
+    for(var i = 0; i < this.length; i++) {
+        if(this[i] === v) return true;
+    }
+    return false;
+};
+</script>
