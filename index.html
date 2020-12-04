@@ -424,7 +424,7 @@ svg
   .enter()
   .append("text")
     .attr('x', function(d){ return width - size(d)- 60 - bxCircle} )
-    .attr("font-family", "America Regular")
+    .attr("font-family", "America Regular, monospace")
     .attr("font-size", ".95em")
     .attr('y', function(d){ return byCircle - 50 - size(d) } )
     .text( function(d){ return d } )
