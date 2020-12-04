@@ -63,7 +63,6 @@ h1 {
 
   .tooltip div {
     font-family: America Bold;
-    font-weight: normal;
 
 }
 
@@ -227,6 +226,7 @@ var mouseover = function(d) {
     tooltip
         .style("opacity", 1)
         .style("font-family","America Bold, monospace")
+        .style("font-weight",700)
         .style("font-size", ".95em")
         .style("line-height","120%")
         .html(d.headline + "<br>")
