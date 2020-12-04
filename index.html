@@ -9,14 +9,14 @@
 
 @font-face {
     font-family: America Bold;
-    src: url(/../GT-America-Mono-Bold-v1.otf) format("opentype");
+    src: url(/GT-America-Mono-Bold-v1.otf) format("opentype");
     font-weight: bold;
     font-style: normal;
 }
 
 @font-face {
     font-family: America Regular;
-    src: url(/../GT-America-Mono-Regular-v1.otf) format("opentype");
+    src: url(/GT-America-Mono-Regular-v1.otf) format("opentype");
     font-weight: normal;
     font-style: normal;
 }
@@ -512,7 +512,7 @@ svg
 
         // Add Heading
         svg.append("text")
-    .attr("font-family", "America Regular, monospace")
+    .attr("font-family", "America Regular, opentype")
     // .attr("font-family","Recoleta, monospace")
     .attr("text-anchor", "end")
     .attr("x", 35)
