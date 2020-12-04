@@ -233,6 +233,7 @@ var mouseover = function(d) {
         .append("div")
         .html(d.subject + "<br>" + "<br>" + d.abstract + "<br>" + "<br>" + whichEmot[d.emotion].toString() + ": " + Math.round(d.emotVal * 100) / 100)
         .style("font-family","America Regular, monospace")
+        .style("font-weight","regular")
         .style("font-size", ".9em")
         .style("line-height","130%")
         .style("letter-spacing", "-.5px")
